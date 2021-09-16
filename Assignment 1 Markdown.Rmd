@@ -1,0 +1,76 @@
+---
+title: "Reproducible Research Assignment 1"
+output: github_document
+---
+
+#### Loading necessary packages for the analysis 
+```{r}
+  library(dplyr)
+  library(ggplot2) 
+```
+
+#### Loading and processing the data 
+
+Obtaining summary statistics
+```{r}
+    activity <- read.csv("activity.csv")
+    summary(activity) 
+    ```
+
+#### What is mean total number of steps taken per day? 
+
+1. Histogram of mean steps taken per day
+```{r}
+stepsbyday <- aggregate(activity["steps"], by=activity["date"], sum)
+hist(stepsbyday$steps, main = "Daily Steps", xlab = "Total Daily Steps") 
+```
+
+2. Mean and median steps taken per day across all days
+```{r} 
+mean(stepsbyday$steps, na.rm = TRUE)
+median(stepsbyday$steps, na.rm = TRUE) 
+```
+
+#### What is the average activity pattern? 
+Time series plot of the average number of steps taken
+```{r} 
+meanstepsinterval <- aggregate(activity["steps"], by=activity["interval"], mean, na.rm = TRUE)
+  plot(meanstepsinterval$interval, meanstepsinterval$steps, type = "l", xlab = "Interval", 
+     ylab = "Avg. Steps Accross All Days", main = "Average Daily Activity Pattern") 
+```
+     
+#### Which 5-minute interval, on average, contains the maximum number of steps? 
+```{r} 
+  meanstepsinterval$interval[which.max(meanstepsinterval$steps)] 
+```
+
+#### Imputing missing values 
+
+1. Copying the original dataframe to be manipulated
+```{r} 
+activityimpute <- read.csv("activity.csv") 
+```
+
+2. Replacing missing values with the avaerage of the corresponding 5-minute interval accross all days
+```{r} 
+activityimpute$steps[is.na(activityimpute$steps)] <-   meanstepsinterval$steps[match(activityimpute$interval,meanstepsinterval$interval)][which(is.na(activityimpute$steps))] 
+```
+
+#### What is the total number of steps taken per day with the imputed dataset? 
+```{r}
+stepsbyday_imputed <- aggregate(activityimpute["steps"], by=activityimpute["date"], sum)
+hist(stepsbyday_imputed$steps, main = "Daily Steps (Imputed Data)", xlab = "Total Daily Steps") 
+```
+
+#### Are there differences in activity patterns between weekdays and weekends? 
+
+Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r}
+activityimpute$typeday <- ifelse(weekdays(as.Date(activityimpute$date)) == "Saturday" | weekdays(as.Date(activityimpute$date)) == "Sunday", "weekend", "weekday") 
+meanstepsdaytype <- aggregate(activityimpute$steps ~ activityimpute$interval + activityimpute$typeday, df = activityimpute, FUN = mean)
+meanstepsdaytype <- rename(meanstepsdaytype, steps = "activityimpute$steps")
+meanstepsdaytype <- rename(meanstepsdaytype, interval = "activityimpute$interval")
+meanstepsdaytype <- rename(meanstepsdaytype, typeday = "activityimpute$typeday")
+ggplot(data = meanstepsdaytype, aes(x = interval, y = steps)) +
+  geom_line() + labs (title= "Average Daily Activity by Weekday", y= "Avg. Steps", x= "Interval") + facet_wrap(~ typeday) 
+```
